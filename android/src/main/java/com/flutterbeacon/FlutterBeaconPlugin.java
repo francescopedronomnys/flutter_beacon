@@ -1,11 +1,18 @@
 package com.flutterbeacon;
 
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.RemoteException;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import org.altbeacon.beacon.BeaconManager;
 import org.altbeacon.beacon.BeaconParser;
@@ -29,7 +36,7 @@ public class FlutterBeaconPlugin implements FlutterPlugin, ActivityAware, Method
   private static final BeaconParser iBeaconLayout = new BeaconParser()
       .setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24");
 
-  static final int REQUEST_CODE_LOCATION = 1234;
+  static final int REQUEST_CODE_PERMISSIONS = 1234;
   static final int REQUEST_CODE_BLUETOOTH = 5678;
 
   private FlutterPluginBinding flutterPluginBinding;
@@ -104,6 +111,7 @@ public class FlutterBeaconPlugin implements FlutterPlugin, ActivityAware, Method
     }
 
     beaconManager = BeaconManager.getInstanceForApplication(activity.getApplicationContext());
+    //BeaconManager.setDebug(true);
     if (!beaconManager.getBeaconParsers().contains(iBeaconLayout)) {
       beaconManager.getBeaconParsers().clear();
       beaconManager.getBeaconParsers().add(iBeaconLayout);
@@ -156,13 +164,6 @@ public class FlutterBeaconPlugin implements FlutterPlugin, ActivityAware, Method
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull final Result result) {
     if (call.method.equals("initialize")) {
-      if (beaconManager != null && !beaconManager.isBound(beaconScanner.beaconConsumer)) {
-        this.flutterResult = result;
-        this.beaconManager.bind(beaconScanner.beaconConsumer);
-
-        return;
-      }
-
       result.success(true);
       return;
     }
@@ -282,9 +283,6 @@ public class FlutterBeaconPlugin implements FlutterPlugin, ActivityAware, Method
         beaconManager.removeAllRangeNotifiers();
         beaconScanner.stopMonitoring();
         beaconManager.removeAllMonitorNotifiers();
-        if (beaconManager.isBound(beaconScanner.beaconConsumer)) {
-          beaconManager.unbind(beaconScanner.beaconConsumer);
-        }
       }
       result.success(true);
       return;
@@ -339,15 +337,6 @@ public class FlutterBeaconPlugin implements FlutterPlugin, ActivityAware, Method
       return;
     }
 
-    if (beaconManager != null && !beaconManager.isBound(beaconScanner.beaconConsumer)) {
-      if (result != null) {
-        this.flutterResult = result;
-      }
-
-      beaconManager.bind(beaconScanner.beaconConsumer);
-      return;
-    }
-
     if (result != null) {
       result.success(true);
     }
@@ -368,7 +357,7 @@ public class FlutterBeaconPlugin implements FlutterPlugin, ActivityAware, Method
   // region ACTIVITY CALLBACK
   @Override
   public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-    if (requestCode != REQUEST_CODE_LOCATION) {
+    if (requestCode != REQUEST_CODE_PERMISSIONS) {
       return false;
     }
 
